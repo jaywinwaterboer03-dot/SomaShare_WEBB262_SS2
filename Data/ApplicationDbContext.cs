@@ -3,7 +3,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace SomaShare.Data
 {
-    public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : IdentityDbContext<ApplicationUser>(options)
+    public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        : IdentityDbContext<ApplicationUser>(options)
     {
         public DbSet<Textbook> Textbooks => Set<Textbook>();
         public DbSet<WantedAd> WantedAds => Set<WantedAd>();
