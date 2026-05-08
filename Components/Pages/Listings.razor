@@ -1,0 +1,145 @@
+@page "/listings"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@inject ITextbookService TextbookService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Textbook Listings</PageTitle>
+
+<h1>Textbook Listings</h1>
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <div class="alert alert-success">@message</div>
+}
+
+<section class="toolbar-panel">
+    <InputText @bind-Value="search" class="form-control" placeholder="Search title, author, ISBN or course code" />
+    <InputText @bind-Value="campus" class="form-control" placeholder="Campus" />
+    <InputSelect @bind-Value="condition" class="form-select">
+        <option value="">Any condition</option>
+        <option>New</option>
+        <option>Good</option>
+        <option>Fair</option>
+        <option>Used</option>
+    </InputSelect>
+    <InputNumber @bind-Value="minPrice" class="form-control" placeholder="Min price" />
+    <InputNumber @bind-Value="maxPrice" class="form-control" placeholder="Max price" />
+    <InputSelect @bind-Value="sort" class="form-select">
+        <option value="date">Newest</option>
+        <option value="price">Price low to high</option>
+    </InputSelect>
+    <button class="btn btn-primary" @onclick="LoadListings">Search</button>
+</section>
+
+<details class="form-panel" open>
+    <summary>Create textbook listing</summary>
+    <EditForm Model="newListing" OnValidSubmit="CreateListing">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="form-grid">
+            <InputText @bind-Value="newListing.Title" class="form-control" placeholder="Title" />
+            <InputText @bind-Value="newListing.Author" class="form-control" placeholder="Author" />
+            <InputText @bind-Value="newListing.ISBN" class="form-control" placeholder="ISBN" />
+            <InputText @bind-Value="newListing.CourseCode" class="form-control" placeholder="Course code" />
+            <InputSelect @bind-Value="newListing.Condition" class="form-select">
+                <option value="">Condition</option>
+                <option>New</option>
+                <option>Good</option>
+                <option>Fair</option>
+                <option>Used</option>
+            </InputSelect>
+            <InputNumber @bind-Value="newListing.Price" class="form-control" placeholder="Price" />
+            <InputText @bind-Value="newListing.Campus" class="form-control" placeholder="Campus" />
+            <InputText @bind-Value="newListing.ImagePath" class="form-control" placeholder="Image path or URL" />
+        </div>
+        <button class="btn btn-success mt-3" type="submit">Save listing</button>
+    </EditForm>
+</details>
+
+<div class="card-grid">
+    @foreach (var textbook in listings)
+    {
+        <article class="listing-card">
+            <div class="book-cover">@textbook.CourseCode</div>
+            <div>
+                <h3>@textbook.Title</h3>
+                <p>@textbook.Author · ISBN @textbook.ISBN</p>
+                <p><strong>@textbook.Price.ToString("C")</strong> · @textbook.Condition · @textbook.Campus</p>
+                <p class="muted">Seller: @textbook.Seller?.FullName</p>
+                <a class="btn btn-sm btn-outline-primary" href="listings/@textbook.Id">Details</a>
+                @if (textbook.SellerId == userId)
+                {
+                    <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteListing(textbook.Id)">Delete</button>
+                }
+            </div>
+        </article>
+    }
+</div>
+
+<div class="pager">
+    <button class="btn btn-outline-dark" disabled="@(currentPage <= 1)" @onclick="Previous">Previous</button>
+    <span>Page @currentPage of @totalPages</span>
+    <button class="btn btn-outline-dark" disabled="@(currentPage >= totalPages)" @onclick="Next">Next</button>
+</div>
+
+@code {
+    private readonly int pageSize = 6;
+    private List<Textbook> listings = new();
+    private Textbook newListing = new();
+    private string? search;
+    private string? campus;
+    private string? condition;
+    private string sort = "date";
+    private decimal? minPrice;
+    private decimal? maxPrice;
+    private int currentPage = 1;
+    private int totalPages = 1;
+    private string userId = string.Empty;
+    private string? message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        await LoadListings();
+    }
+
+    private async Task LoadListings()
+    {
+        var total = await TextbookService.CountAsync(search, campus, minPrice, maxPrice, condition);
+        totalPages = Math.Max(1, (int)Math.Ceiling(total / (double)pageSize));
+        currentPage = Math.Min(currentPage, totalPages);
+        listings = await TextbookService.GetAllAsync(search, campus: campus, minPrice: minPrice, maxPrice: maxPrice, condition: condition, sort: sort, page: currentPage, pageSize: pageSize);
+    }
+
+    private async Task CreateListing()
+    {
+        newListing.SellerId = userId;
+        newListing.CreatedAt = DateTime.UtcNow;
+        await TextbookService.AddAsync(newListing);
+        newListing = new();
+        message = "Listing created successfully.";
+        await LoadListings();
+    }
+
+    private async Task DeleteListing(int id)
+    {
+        await TextbookService.DeleteAsync(id);
+        message = "Listing deleted.";
+        await LoadListings();
+    }
+
+    private async Task Previous()
+    {
+        currentPage--;
+        await LoadListings();
+    }
+
+    private async Task Next()
+    {
+        currentPage++;
+        await LoadListings();
+    }
+}

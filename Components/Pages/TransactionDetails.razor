@@ -1,0 +1,87 @@
+@page "/transactions/{Id:int}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@inject ITransactionService TransactionService
+@inject IReviewService ReviewService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Transaction</PageTitle>
+
+@if (transaction is null)
+{
+    <p>Transaction not found.</p>
+}
+else
+{
+    <h1>@transaction.Textbook.Title</h1>
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <div class="alert alert-success">@message</div>
+    }
+    <section class="detail-layout">
+        <div>
+            <p><strong>Buyer:</strong> @transaction.Buyer.FullName</p>
+            <p><strong>Seller:</strong> @transaction.Seller.FullName</p>
+            <p><strong>Payment:</strong> Cash on Meetup</p>
+            <p><strong>Status:</strong> @(transaction.IsComplete ? "Complete" : "Pending meetup")</p>
+        </div>
+        @if (!transaction.IsComplete)
+        {
+            <button class="btn btn-success" @onclick="MarkComplete">Mark transaction complete</button>
+        }
+    </section>
+
+    @if (transaction.IsComplete)
+    {
+        <EditForm Model="review" OnValidSubmit="LeaveReview" class="form-panel">
+            <DataAnnotationsValidator />
+            <h2>Leave a Review</h2>
+            <InputNumber @bind-Value="review.Rating" class="form-control" />
+            <InputTextArea @bind-Value="review.Comment" class="form-control mt-2" placeholder="Comment" />
+            <button class="btn btn-primary mt-2" type="submit">Save review</button>
+        </EditForm>
+    }
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private Transaction? transaction;
+    private Review review = new() { Rating = 5 };
+    private string userId = string.Empty;
+    private string? message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        transaction = await TransactionService.GetByIdAsync(Id);
+    }
+
+    private async Task MarkComplete()
+    {
+        if (transaction is null)
+        {
+            return;
+        }
+        transaction.IsComplete = true;
+        await TransactionService.UpdateAsync(transaction);
+        message = "Transaction marked complete.";
+    }
+
+    private async Task LeaveReview()
+    {
+        if (transaction is null)
+        {
+            return;
+        }
+        review.TransactionId = transaction.Id;
+        review.ReviewerId = userId;
+        review.ReviewedUserId = transaction.BuyerId == userId ? transaction.SellerId : transaction.BuyerId;
+        review.CreatedAt = DateTime.UtcNow;
+        await ReviewService.AddAsync(review);
+        review = new() { Rating = 5 };
+        message = "Review saved and trust score updated.";
+        transaction = await TransactionService.GetByIdAsync(Id);
+    }
+}

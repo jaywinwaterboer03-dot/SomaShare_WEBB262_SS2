@@ -1,0 +1,76 @@
+@page "/admin"
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+
+@inject ITextbookService TextbookService
+@inject UserManager<ApplicationUser> UserManager
+
+<PageTitle>Admin</PageTitle>
+
+<h1>Admin Dashboard</h1>
+
+<h2>Listings Moderation</h2>
+<div class="table-responsive">
+    <table class="table">
+        <thead><tr><th>Title</th><th>Seller</th><th>Campus</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var listing in listings)
+        {
+            <tr>
+                <td>@listing.Title</td>
+                <td>@listing.Seller?.FullName</td>
+                <td>@listing.Campus</td>
+                <td><button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveListing(listing.Id)">Remove</button></td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+<h2>User Accounts</h2>
+<div class="table-responsive">
+    <table class="table">
+        <thead><tr><th>Name</th><th>Email</th><th>Campus</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var user in users)
+        {
+            <tr>
+                <td>@user.FullName</td>
+                <td>@user.Email</td>
+                <td>@user.Campus</td>
+                <td>@(user.LockoutEnd is null ? "Active" : "Suspended")</td>
+                <td><button class="btn btn-sm btn-outline-warning" @onclick="() => Suspend(user)">Suspend</button></td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private List<Textbook> listings = new();
+    private List<ApplicationUser> users = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        listings = await TextbookService.GetAllAsync(pageSize: 100);
+        users = UserManager.Users.OrderBy(user => user.FullName).ToList();
+    }
+
+    private async Task RemoveListing(int id)
+    {
+        await TextbookService.DeleteAsync(id);
+        await Load();
+    }
+
+    private async Task Suspend(ApplicationUser user)
+    {
+        user.LockoutEnd = DateTimeOffset.UtcNow.AddDays(14);
+        await UserManager.UpdateAsync(user);
+        await Load();
+    }
+}

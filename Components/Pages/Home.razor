@@ -1,0 +1,59 @@
+@page "/"
+@rendermode InteractiveServer
+
+@inject ITextbookService TextbookService
+
+<PageTitle>SomaShare</PageTitle>
+
+<section class="hero-band">
+    <div>
+        <p class="eyebrow">University Textbook Exchange</p>
+        <h1>SomaShare</h1>
+        <p class="lead">Buy, sell, swap, and request prescribed books inside a trusted campus community.</p>
+    </div>
+    <div class="hero-actions">
+        <a class="btn btn-primary" href="listings">Browse books</a>
+        <a class="btn btn-outline-dark" href="wanted">Wanted ads</a>
+    </div>
+</section>
+
+<section class="section-grid">
+    <article>
+        <h2>Affordable access</h2>
+        <p>Students can list used textbooks, negotiate offers, and arrange cash-on-meetup exchanges.</p>
+    </article>
+    <article>
+        <h2>Community trust</h2>
+        <p>Completed transactions and reviews build a visible trust score for safer campus exchanges.</p>
+    </article>
+    <article>
+        <h2>African context</h2>
+        <p>The platform supports campus meetup locations, local cash payment, and English/isiZulu profile preference.</p>
+    </article>
+</section>
+
+<h2>Latest Listings</h2>
+<div class="card-grid">
+    @foreach (var textbook in latest)
+    {
+        <article class="listing-card">
+            <div class="book-cover">@textbook.CourseCode</div>
+            <div>
+                <h3>@textbook.Title</h3>
+                <p>@textbook.Author</p>
+                <strong>@textbook.Price.ToString("C")</strong>
+                <p class="muted">@textbook.Campus · @textbook.Condition</p>
+                <a href="listings/@textbook.Id">View listing</a>
+            </div>
+        </article>
+    }
+</div>
+
+@code {
+    private List<Textbook> latest = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        latest = await TextbookService.GetAllAsync(sort: "date", pageSize: 6);
+    }
+}

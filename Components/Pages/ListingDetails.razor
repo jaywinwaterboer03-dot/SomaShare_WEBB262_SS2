@@ -1,0 +1,112 @@
+@page "/listings/{Id:int}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@inject ITextbookService TextbookService
+@inject IOfferService OfferService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Listing Details</PageTitle>
+
+@if (textbook is null)
+{
+    <p>Listing not found.</p>
+}
+else
+{
+    <h1>@textbook.Title</h1>
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <div class="alert alert-info">@message</div>
+    }
+    <section class="detail-layout">
+        <div class="book-cover large">@textbook.CourseCode</div>
+        <div>
+            <p><strong>Author:</strong> @textbook.Author</p>
+            <p><strong>ISBN:</strong> @textbook.ISBN</p>
+            <p><strong>Condition:</strong> @textbook.Condition</p>
+            <p><strong>Campus:</strong> @textbook.Campus</p>
+            <p><strong>Price:</strong> @textbook.Price.ToString("C")</p>
+            <p><strong>Seller:</strong> @textbook.Seller?.FullName</p>
+        </div>
+    </section>
+
+    @if (textbook.SellerId != userId)
+    {
+        <EditForm Model="offer" OnValidSubmit="MakeOffer" class="form-panel">
+            <DataAnnotationsValidator />
+            <h2>Make an Offer</h2>
+            <InputNumber @bind-Value="offer.OfferPrice" class="form-control" />
+            <button class="btn btn-primary mt-2" type="submit">Send offer</button>
+        </EditForm>
+    }
+    else
+    {
+        <h2>Offers Received</h2>
+        @foreach (var item in offers)
+        {
+            <div class="inline-row">
+                <span>@item.Buyer?.FullName offered @item.OfferPrice.ToString("C") (@item.Status)</span>
+                @if (item.Status == OfferStatus.Pending)
+                {
+                    <button class="btn btn-sm btn-success" @onclick="() => Accept(item.Id)">Accept</button>
+                    <button class="btn btn-sm btn-outline-danger" @onclick="() => Reject(item.Id)">Reject</button>
+                }
+            </div>
+        }
+    }
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private Textbook? textbook;
+    private Offer offer = new();
+    private List<Offer> offers = new();
+    private string userId = string.Empty;
+    private string? message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        textbook = await TextbookService.GetByIdAsync(Id);
+        offers = await OfferService.GetOffersForTextbookAsync(Id);
+    }
+
+    private async Task MakeOffer()
+    {
+        offer.TextbookId = Id;
+        offer.BuyerId = userId;
+        offer.OfferedAt = DateTime.UtcNow;
+        await OfferService.AddAsync(offer);
+        offer = new();
+        message = "Offer sent to the seller.";
+        await Load();
+    }
+
+    private async Task Accept(int offerId)
+    {
+        try
+        {
+            await OfferService.AcceptOfferAsync(offerId, userId);
+            message = "Offer accepted and transaction created.";
+        }
+        catch (InvalidOperationException ex)
+        {
+            message = ex.Message;
+        }
+        await Load();
+    }
+
+    private async Task Reject(int offerId)
+    {
+        await OfferService.RejectOfferAsync(offerId, userId);
+        message = "Offer rejected.";
+        await Load();
+    }
+}

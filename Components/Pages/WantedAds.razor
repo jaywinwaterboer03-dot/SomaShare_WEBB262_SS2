@@ -1,0 +1,75 @@
+@page "/wanted"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@inject IWantedAdService WantedAdService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Wanted Ads</PageTitle>
+
+<h1>Wanted Ads</h1>
+
+<EditForm Model="wantedAd" OnValidSubmit="CreateWantedAd" class="form-panel">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <div class="form-grid">
+        <InputText @bind-Value="wantedAd.Title" class="form-control" placeholder="Book title" />
+        <InputText @bind-Value="wantedAd.Author" class="form-control" placeholder="Author" />
+        <InputText @bind-Value="wantedAd.ISBN" class="form-control" placeholder="ISBN" />
+        <InputText @bind-Value="wantedAd.CourseCode" class="form-control" placeholder="Course code" />
+        <InputText @bind-Value="wantedAd.Campus" class="form-control" placeholder="Campus" />
+        <InputText @bind-Value="wantedAd.Description" class="form-control" placeholder="Notes" />
+    </div>
+    <button class="btn btn-primary mt-3" type="submit">Post wanted ad</button>
+</EditForm>
+
+<div class="card-grid">
+    @foreach (var ad in wantedAds)
+    {
+        <article class="listing-card">
+            <div class="book-cover">@ad.CourseCode</div>
+            <div>
+                <h3>@ad.Title</h3>
+                <p>@ad.Author</p>
+                <p class="muted">@ad.Campus · @ad.Description</p>
+                @if (ad.BuyerId == userId)
+                {
+                    <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteWantedAd(ad.Id)">Delete</button>
+                }
+            </div>
+        </article>
+    }
+</div>
+
+@code {
+    private WantedAd wantedAd = new();
+    private List<WantedAd> wantedAds = new();
+    private string userId = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        wantedAds = await WantedAdService.GetAllAsync();
+    }
+
+    private async Task CreateWantedAd()
+    {
+        wantedAd.BuyerId = userId;
+        wantedAd.CreatedAt = DateTime.UtcNow;
+        await WantedAdService.AddAsync(wantedAd);
+        wantedAd = new();
+        await Load();
+    }
+
+    private async Task DeleteWantedAd(int id)
+    {
+        await WantedAdService.DeleteAsync(id);
+        await Load();
+    }
+}

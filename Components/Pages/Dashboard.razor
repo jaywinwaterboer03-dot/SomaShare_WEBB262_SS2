@@ -1,0 +1,89 @@
+@page "/dashboard"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@inject ITextbookService TextbookService
+@inject IOfferService OfferService
+@inject ITransactionService TransactionService
+@inject IReviewService ReviewService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Dashboard</PageTitle>
+
+<h1>My Dashboard</h1>
+
+<section class="stats-grid">
+    <div><strong>@myListings.Count</strong><span>Listings</span></div>
+    <div><strong>@myOffers.Count</strong><span>Offers</span></div>
+    <div><strong>@myTransactions.Count</strong><span>Transactions</span></div>
+    <div><strong>@trustScore</strong><span>Trust score</span></div>
+</section>
+
+<h2>My Listings</h2>
+<div class="table-responsive">
+    <table class="table">
+        <thead><tr><th>Book</th><th>Price</th><th>Campus</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var item in myListings)
+        {
+            <tr><td>@item.Title</td><td>@item.Price.ToString("C")</td><td>@item.Campus</td><td><a href="listings/@item.Id">Open</a></td></tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+<h2>My Offers</h2>
+<div class="table-responsive">
+    <table class="table">
+        <thead><tr><th>Book</th><th>Offer</th><th>Status</th></tr></thead>
+        <tbody>
+        @foreach (var item in myOffers)
+        {
+            <tr><td>@item.Textbook.Title</td><td>@item.OfferPrice.ToString("C")</td><td>@item.Status</td></tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+<h2>My Transactions</h2>
+<div class="table-responsive">
+    <table class="table">
+        <thead><tr><th>Book</th><th>Payment</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var item in myTransactions)
+        {
+            <tr>
+                <td>@item.Textbook.Title</td>
+                <td>@item.PaymentMethod</td>
+                <td>@(item.IsComplete ? "Complete" : "Pending meetup")</td>
+                <td><a href="transactions/@item.Id">Open</a></td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+
+<h2>My Reviews</h2>
+@foreach (var review in myReviews)
+{
+    <p class="review-line">@review.Rating/5 · @review.Comment</p>
+}
+
+@code {
+    private List<Textbook> myListings = new();
+    private List<Offer> myOffers = new();
+    private List<Transaction> myTransactions = new();
+    private List<Review> myReviews = new();
+    private double trustScore;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        myListings = await TextbookService.GetForSellerAsync(userId);
+        myOffers = await OfferService.GetOffersForUserAsync(userId);
+        myTransactions = await TransactionService.GetTransactionsForUserAsync(userId);
+        myReviews = await ReviewService.GetReviewsForUserAsync(userId);
+        trustScore = await ReviewService.GetTrustScoreAsync(userId);
+    }
+}
