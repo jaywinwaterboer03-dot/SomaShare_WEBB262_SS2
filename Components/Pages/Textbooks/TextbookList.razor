@@ -1,0 +1,85 @@
+﻿@page "/textbooks"
+
+@using Microsoft.EntityFrameworkCore
+@using SomaShare.Data
+@inject ApplicationDbContext Db
+
+<h3>Textbook Listings</h3>
+
+<a class="btn btn-primary mb-3" href="/create-textbook">
+    Add New Textbook
+</a>
+
+@if (textbooks == null)
+{
+    <p>Loading...</p>
+}
+else if (!textbooks.Any())
+{
+    <p>No textbooks found.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Author</th>
+                <th>ISBN</th>
+                <th>Course</th>
+                <th>Campus</th>
+                <th>Price</th>
+                <th></th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var book in textbooks)
+            {
+                <tr>
+                    <td>@book.Title</td>
+                    <td>@book.Author</td>
+                    <td>@book.ISBN</td>
+                    <td>@book.CourseCode</td>
+                    <td>@book.Campus</td>
+                    <td>R @book.Price</td>
+
+                    <td>
+                        <a class="btn btn-warning btn-sm"
+                               href="/edit-textbook/@book.Id">
+                            Edit
+                        </a>
+
+                        <button class="btn btn-danger btn-sm"
+                                @onclick="() => DeleteBook(book.Id)">
+                            Delete
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+
+    private List<Textbook> textbooks = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        textbooks = await Db.Textbooks.ToListAsync();
+    }
+
+    private async Task DeleteBook(int id)
+    {
+        var book = await Db.Textbooks.FindAsync(id);
+
+        if (book != null)
+        {
+            Db.Textbooks.Remove(book);
+            await Db.SaveChangesAsync();
+
+            textbooks = await Db.Textbooks.ToListAsync();
+        }
+    }
+}
