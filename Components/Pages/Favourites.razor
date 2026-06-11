@@ -1,0 +1,65 @@
+@page "/favourites"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@using SomaShare.Data
+@inject IFavouriteService FavouriteService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>My Favourites</PageTitle>
+
+<h1>My Favourite Textbooks</h1>
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <div class="alert alert-success">@message</div>
+}
+
+@if (favourites.Count == 0)
+{
+    <p class="text-muted">You haven't added any favourites yet. <a href="/listings">Browse textbooks</a> and add some!</p>
+}
+else
+{
+    <div class="card-grid">
+        @foreach (var favourite in favourites)
+        {
+            <article class="listing-card">
+                <div class="book-cover">@favourite.Textbook.CourseCode</div>
+                <div>
+                    <h3>@favourite.Textbook.Title</h3>
+                    <p>@favourite.Textbook.Author · ISBN @favourite.Textbook.ISBN</p>
+                    <p><strong>@favourite.Textbook.Price.ToString("C")</strong> · @favourite.Textbook.Condition · @favourite.Textbook.Campus</p>
+                    <p class="muted">Seller: @favourite.Textbook.Seller?.FullName</p>
+                    <a class="btn btn-sm btn-outline-primary" href="listings/@favourite.Textbook.Id">View Details</a>
+                    <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveFavourite(favourite.Textbook.Id)">Remove from Favourites</button>
+                </div>
+            </article>
+        }
+    </div>
+}
+
+@code {
+    private List<Favourite> favourites = new();
+    private string userId = string.Empty;
+    private string? message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        await LoadFavourites();
+    }
+
+    private async Task LoadFavourites()
+    {
+        favourites = await FavouriteService.GetUserFavouritesAsync(userId);
+    }
+
+    private async Task RemoveFavourite(int textbookId)
+    {
+        await FavouriteService.RemoveAsync(userId, textbookId);
+        message = "Removed from favourites.";
+        await LoadFavourites();
+    }
+}

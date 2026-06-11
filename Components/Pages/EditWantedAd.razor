@@ -1,0 +1,92 @@
+@page "/edit-wanted-ad/{Id:int}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@using SomaShare.Data
+@inject IWantedAdService WantedAdService
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Edit Wanted Ad</PageTitle>
+
+<h1>Edit Wanted Ad</h1>
+
+@if (wantedAd == null)
+{
+    <p>Loading...</p>
+}
+else if (isUnauthorized)
+{
+    <div class="alert alert-danger">You can only edit your own wanted ads.</div>
+}
+else
+{
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="alert alert-success">@successMessage</div>
+    }
+
+    <EditForm Model="wantedAd" OnValidSubmit="UpdateWantedAd" class="form-panel">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="form-grid">
+            <InputText @bind-Value="wantedAd.Title" class="form-control" placeholder="Book title" />
+            <InputText @bind-Value="wantedAd.Author" class="form-control" placeholder="Author" />
+            <InputText @bind-Value="wantedAd.ISBN" class="form-control" placeholder="ISBN" />
+            <InputText @bind-Value="wantedAd.CourseCode" class="form-control" placeholder="Course code" />
+            <InputText @bind-Value="wantedAd.Campus" class="form-control" placeholder="Campus" />
+            <InputTextArea @bind-Value="wantedAd.Description" class="form-control" placeholder="Notes" />
+        </div>
+        <button class="btn btn-success mt-3" type="submit" disabled="@isSubmitting">Update Wanted Ad</button>
+        <a href="/wanted" class="btn btn-outline-secondary mt-3">Cancel</a>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private WantedAd? wantedAd;
+    private string userId = string.Empty;
+    private bool isUnauthorized = false;
+    private bool isSubmitting = false;
+    private string? successMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+
+        wantedAd = await WantedAdService.GetByIdAsync(Id);
+
+        if (wantedAd == null)
+        {
+            Navigation.NavigateTo("/wanted");
+            return;
+        }
+
+        if (wantedAd.BuyerId != userId)
+        {
+            isUnauthorized = true;
+        }
+    }
+
+    private async Task UpdateWantedAd()
+    {
+        if (wantedAd != null)
+        {
+            isSubmitting = true;
+            // basic validation
+            if (string.IsNullOrWhiteSpace(wantedAd.Title) || string.IsNullOrWhiteSpace(wantedAd.Campus))
+            {
+                successMessage = null;
+                isSubmitting = false;
+                return;
+            }
+
+            await WantedAdService.UpdateAsync(wantedAd);
+            successMessage = "Wanted ad updated successfully.";
+            isSubmitting = false;
+        }
+    }
+}

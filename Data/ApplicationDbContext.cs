@@ -13,6 +13,8 @@ namespace SomaShare.Data
         public DbSet<Review> Reviews => Set<Review>();
         public DbSet<Category> Categories => Set<Category>();
         public DbSet<TextbookCategory> TextbookCategories => Set<TextbookCategory>();
+        public DbSet<Favourite> Favourites => Set<Favourite>();
+        public DbSet<Notification> Notifications => Set<Notification>();
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -109,6 +111,32 @@ namespace SomaShare.Data
                 .HasOne(item => item.Category)
                 .WithMany(category => category.TextbookCategories)
                 .HasForeignKey(item => item.CategoryId);
+
+            builder.Entity<Favourite>()
+                .HasOne(f => f.User)
+                .WithMany()
+                .HasForeignKey(f => f.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<Favourite>()
+                .HasOne(f => f.Textbook)
+                .WithMany()
+                .HasForeignKey(f => f.TextbookId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<Notification>()
+                .HasOne(n => n.User)
+                .WithMany()
+                .HasForeignKey(n => n.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<Notification>()
+                .HasIndex(n => new { n.UserId, n.IsRead })
+                .IsUnique(false);
+
+            builder.Entity<Notification>()
+                .HasIndex(n => n.CreatedAt)
+                .IsUnique(false);
         }
     }
 }

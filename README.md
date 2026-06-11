@@ -4,39 +4,65 @@ SomaShare is a Blazor-based university textbook exchange platform for buying, se
 
 ## Technologies
 
-- ASP.NET Core Blazor Server
-- .NET 10 SDK, meeting the assignment requirement of .NET 8+
+- ASP.NET Core Blazor Server (.NET 10)
 - C#
 - ASP.NET Core Identity with roles
 - Entity Framework Core Code-First
 - SQL Server LocalDB
+- SignalR (Real-time notifications)
+- Bootstrap (Responsive UI)
 
-## Main Features
+## Core Features
 
 - Student registration and login with university email validation
 - Buyer, Seller, and Admin roles
 - Textbook listings with CRUD operations
-- Wanted ads
+- Wanted ads for textbook requests
 - Offers and seller accept/reject workflow
-- Transaction creation when an offer is accepted
+- Transaction creation and completion
 - Cash on Meetup payment option
-- Transaction completion
-- Ratings, reviews, and trust score
-- Search by title, author, ISBN, and course code
-- Filters for campus, condition, and price range
+- Ratings, reviews, and trust score calculation
+- Advanced search (title, author, ISBN, course code)
+- Dynamic filtering (campus, condition, price range)
 - Sorting and pagination
-- User dashboard for listings, offers, transactions, reviews, and trust score
-- Admin dashboard for listing moderation and account suspension
-- English/isiZulu profile language preference
+- User dashboard for personal activity
+- Favorites/Wishlist system
+- English/isiZulu language preference
+
+## 🆕 Innovation Features (SS3)
+
+### 1. Real-Time Notifications System
+- In-app notifications for offers, transactions, reviews
+- SignalR-based real-time delivery
+- Notification dashboard at `/notifications`
+- Mark as read functionality
+- Automatic cleanup of old notifications
+
+### 2. User Analytics Dashboard
+- Personal sales performance metrics
+- Revenue tracking and trends
+- Top selling categories analysis
+- Monthly sales trends
+- Platform-wide analytics
+- Access at `/analytics`
+
+### 3. Advanced Admin Reporting
+- Comprehensive platform statistics
+- Detailed user, transaction, and review reports
+- CSV export functionality
+- Summary cards with key metrics
+- Admin reporting dashboard at `/admin/reports`
 
 ## Database
 
-The application uses the `SomaShareDB` SQL Server LocalDB database. The connection string is stored in `appsettings.json` as `DefaultConnection`.
+The application uses the `SomaShareDB` SQL Server LocalDB database. Connection string stored in `appsettings.json`.
 
-Migrations are stored in `Data/Migrations`, including:
-
+Migrations include:
 - Identity schema
-- SomaShare domain schema for users, textbooks, wanted ads, offers, transactions, reviews, categories, and the textbook/category many-to-many relationship
+- SomaShare domain entities (users, textbooks, offers, transactions, reviews, categories)
+- Notification entity for real-time notifications
+- Proper relationships and constraints
+- Database indexes for performance
 
 ## Seeded Test Accounts
 
@@ -54,5 +80,64 @@ dotnet run --urls http://localhost:5087
 ```
 
 Open `http://localhost:5087` in the browser.
+
+## Key Pages
+
+**Public Pages:**
+- `/` - Home page
+- `/Account/Register` - User registration
+- `/Account/Login` - User login
+
+**Authenticated User Pages:**
+- `/listings` - Browse textbooks
+- `/wanted` - Wanted ads
+- `/dashboard` - Personal dashboard
+- `/notifications` - Notifications (NEW)
+- `/analytics` - Sales analytics (NEW)
+- `/Account/Manage` - Account settings
+
+**Admin Pages:**
+- `/admin` - Admin dashboard
+- `/admin/reports` - Advanced reports (NEW)
+
+## Architecture
+
+**Layered Architecture:**
+- **Presentation Layer**: Razor components (`Components/`)
+- **Service Layer**: Business logic services (`Data/Services/`)
+- **Data Layer**: Entity Framework Core with repositories
+- **Real-Time Layer**: SignalR hub (`Hubs/`)
+
+**Design Patterns:**
+- Repository pattern
+- Service pattern
+- Dependency Injection
+- Async/await for all I/O operations
+- SOLID principles throughout
+
+## Documentation
+
+- `INNOVATION_FEATURES.md` - Detailed feature documentation
+- `IMPLEMENTATION_SUMMARY.md` - Implementation overview
+- `DEPLOYMENT_GUIDE.md` - Deployment and integration guide
+- `SS3_INNOVATION_SUMMARY.md` - SS3 submission overview
+
+## Deployment
+
+The application is ready for Azure App Service deployment:
+1. Update database connection string
+2. Run migrations: `Update-Database`
+3. Use Visual Studio Publish feature
+4. Deploy to Azure App Service
+
+## Future Enhancements
+
+- Email notifications
+- Advanced analytics charting
+- Real-time dashboard updates
+- Scheduled reports
+- Wishlist notifications
+- Advanced admin filtering
+- QR code verification system
 
 

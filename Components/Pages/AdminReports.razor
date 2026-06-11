@@ -1,0 +1,355 @@
+@page "/admin/reports"
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+
+@using SomaShare.Data
+@using SomaShare.Data.Services
+@inject IAdminReportService AdminReportService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Admin Reports - SomaShare</PageTitle>
+
+<div class="admin-reports-container">
+    <h2>Advanced Admin Reports</h2>
+
+    @if (report != null)
+    {
+        <div class="report-summary">
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <h5>Total Users</h5>
+                    <p class="summary-value">@report.TotalUsers</p>
+                    <small>@report.ActiveUsers active | @report.SuspendedUsers suspended</small>
+                </div>
+
+                <div class="summary-card">
+                    <h5>Listings</h5>
+                    <p class="summary-value">@report.TotalListings</p>
+                    <small>@report.FlaggedListings flagged for review</small>
+                </div>
+
+                <div class="summary-card">
+                    <h5>Transactions</h5>
+                    <p class="summary-value">@report.TotalTransactions</p>
+                    <small>@report.PendingTransactions pending | R@report.TotalTransactionValue.ToString("F2") total value</small>
+                </div>
+
+                <div class="summary-card">
+                    <h5>Reviews</h5>
+                    <p class="summary-value">@report.TotalReviews</p>
+                    <small>Avg Rating: @report.AverageRating ★</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="reports-tabs">
+            <ul class="nav nav-tabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link @(activeTab == "users" ? "active" : "")" href="javascript:void(0)" @onclick="@(() => SetActiveTab("users"))">
+                        Top Users
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(activeTab == "transactions" ? "active" : "")" href="javascript:void(0)" @onclick="@(() => SetActiveTab("transactions"))">
+                        Recent Transactions
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(activeTab == "reviews" ? "active" : "")" href="javascript:void(0)" @onclick="@(() => SetActiveTab("reviews"))">
+                        Recent Reviews
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(activeTab == "export" ? "active" : "")" href="javascript:void(0)" @onclick="@(() => SetActiveTab("export"))">
+                        Export Data
+                    </a>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                @if (activeTab == "users")
+                {
+                    <div class="tab-pane active">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Campus</th>
+                                    <th>Trust Score</th>
+                                    <th>Listings</th>
+                                    <th>Transactions</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var user in report.RecentUsers)
+                                {
+                                    <tr>
+                                        <td>@user.FullName</td>
+                                        <td>@user.Email</td>
+                                        <td>@user.Campus</td>
+                                        <td>@user.TrustScore ★</td>
+                                        <td>@user.ListingCount</td>
+                                        <td>@user.TransactionCount</td>
+                                        <td>
+                                            @if (user.IsSuspended)
+                                            {
+                                                <span class="badge bg-danger">Suspended</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-success">Active</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
+                @if (activeTab == "transactions")
+                {
+                    <div class="tab-pane active">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Buyer</th>
+                                    <th>Seller</th>
+                                    <th>Textbook</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var transaction in report.RecentTransactions)
+                                {
+                                    <tr>
+                                        <td>@transaction.BuyerName</td>
+                                        <td>@transaction.SellerName</td>
+                                        <td>@transaction.TextbookTitle</td>
+                                        <td>R@transaction.Amount.ToString("F2")</td>
+                                        <td>
+                                            @if (transaction.IsCompleted)
+                                            {
+                                                <span class="badge bg-success">Completed</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-warning">Pending</span>
+                                            }
+                                        </td>
+                                        <td>@transaction.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
+                @if (activeTab == "reviews")
+                {
+                    <div class="tab-pane active">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Reviewer</th>
+                                    <th>Reviewed User</th>
+                                    <th>Rating</th>
+                                    <th>Comment</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var review in report.RecentReviews)
+                                {
+                                    <tr>
+                                        <td>@review.ReviewerName</td>
+                                        <td>@review.ReviewedUserName</td>
+                                        <td>
+                                            @string.Join("", Enumerable.Range(0, review.Rating).Select(_ => "★"))@string.Join("", Enumerable.Range(0, 5 - review.Rating).Select(_ => "☆"))
+                                        </td>
+                                        <td>
+                                            @if (string.IsNullOrEmpty(review.Comment))
+                                            {
+                                                <em class="text-muted">No comment</em>
+                                            }
+                                            else
+                                            {
+                                                @review.Comment
+                                            }
+                                        </td>
+                                        <td>@review.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
+                @if (activeTab == "export")
+                {
+                    <div class="tab-pane active">
+                        <div class="export-section">
+                            <h5>Export Data</h5>
+                            <p>Download platform data as CSV for analysis and record-keeping.</p>
+                            <div class="export-buttons">
+                                <button class="btn btn-primary" @onclick="ExportUsers">
+                                    <span class="oi oi-data-transfer-download"></span> Export Users
+                                </button>
+                                <button class="btn btn-primary" @onclick="ExportTransactions">
+                                    <span class="oi oi-data-transfer-download"></span> Export Transactions
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .admin-reports-container {
+        max-width: 1400px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+    }
+
+    .report-summary {
+        margin: 2rem 0;
+    }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .summary-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .summary-card h5 {
+        margin: 0 0 0.5rem 0;
+        opacity: 0.9;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .summary-value {
+        margin: 0.5rem 0;
+        font-size: 2rem;
+        font-weight: bold;
+    }
+
+    .summary-card small {
+        opacity: 0.8;
+        font-size: 0.85rem;
+    }
+
+    .reports-tabs {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .nav-tabs {
+        border-bottom: 2px solid #dee2e6;
+        padding: 1rem;
+    }
+
+    .nav-link {
+        color: #495057;
+        border: none;
+        border-bottom: 3px solid transparent;
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .nav-link.active {
+        color: #0d6efd;
+        border-bottom-color: #0d6efd;
+        background: none;
+    }
+
+    .tab-content {
+        padding: 2rem 1rem;
+    }
+
+    .table {
+        margin-bottom: 0;
+    }
+
+    .table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+    }
+
+    .export-section {
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .export-buttons {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-top: 1.5rem;
+    }
+
+    .export-buttons .btn {
+        min-width: 150px;
+    }
+</style>
+
+@code {
+    private AdminReportDto? report;
+    private string activeTab = "users";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadReport();
+    }
+
+    private async Task LoadReport()
+    {
+        report = await AdminReportService.GenerateFullReportAsync();
+    }
+
+    private void SetActiveTab(string tabName)
+    {
+        activeTab = tabName;
+    }
+
+    private async Task ExportUsers()
+    {
+        var csv = await AdminReportService.ExportUsersAsCsvAsync();
+        await DownloadFile(csv, "somashare_users.csv");
+    }
+
+    private async Task ExportTransactions()
+    {
+        var csv = await AdminReportService.ExportTransactionsAsCsvAsync();
+        await DownloadFile(csv, "somashare_transactions.csv");
+    }
+
+    private async Task DownloadFile(byte[] data, string fileName)
+    {
+        // Note: In Blazor, you would use JS interop to trigger the download
+        // For now, this is a placeholder. In real implementation, you'd use:
+        // await JS.InvokeVoidAsync("downloadFile", data, fileName);
+
+        // Or return a download endpoint from the API
+        System.Diagnostics.Debug.WriteLine($"Download {fileName} with {data.Length} bytes");
+    }
+}

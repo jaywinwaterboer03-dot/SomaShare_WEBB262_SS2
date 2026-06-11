@@ -11,8 +11,14 @@ namespace SomaShare.Data
         [Required, StringLength(80)]
         public string Campus { get; set; } = "Main Campus";
 
+        [StringLength(80)]
+        public string PreferredMeetupCampus { get; set; } = "Main Campus";
+
         [StringLength(20)]
         public string PreferredLanguage { get; set; } = "English";
+
+        [StringLength(1000)]
+        public string? Bio { get; set; }
 
         public ICollection<Textbook> Textbooks { get; set; } = new List<Textbook>();
         public ICollection<WantedAd> WantedAds { get; set; } = new List<WantedAd>();

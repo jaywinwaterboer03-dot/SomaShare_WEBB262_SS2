@@ -1,0 +1,89 @@
+@page "/transactions"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@using SomaShare.Data
+@inject ITransactionService TransactionService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>My Transactions</PageTitle>
+
+<h1>My Transactions</h1>
+
+@if (!string.IsNullOrWhiteSpace(message))
+{
+    <div class="alert alert-success">@message</div>
+}
+
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Book</th>
+                <th>Buyer</th>
+                <th>Seller</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var transaction in transactions)
+            {
+                <tr>
+                    <td>@transaction.Textbook?.Title</td>
+                    <td>@transaction.Buyer?.FullName</td>
+                    <td>@transaction.Seller?.FullName</td>
+                    <td>@(transaction.IsComplete ? "Completed" : "Pending")</td>
+                    <td>@transaction.TransactionDate.ToString("MMM dd, yyyy")</td>
+                    <td>
+                        @if (!transaction.IsComplete)
+                        {
+                            <button class="btn btn-sm btn-success" @onclick="() => MarkComplete(transaction.Id)">Mark Complete</button>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success">Done</span>
+                        }
+                        <a href="transaction-details/@transaction.Id" class="btn btn-sm btn-outline-primary">Details</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if (transactions.Count == 0)
+{
+    <p class="text-muted">You have no transactions yet.</p>
+}
+
+@code {
+    private List<Transaction> transactions = new();
+    private string userId = string.Empty;
+    private string? message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        await LoadTransactions();
+    }
+
+    private async Task LoadTransactions()
+    {
+        transactions = await TransactionService.GetTransactionsForUserAsync(userId);
+    }
+
+    private async Task MarkComplete(int transactionId)
+    {
+        var transaction = await TransactionService.GetByIdAsync(transactionId);
+        if (transaction != null)
+        {
+            transaction.IsComplete = true;
+            await TransactionService.UpdateAsync(transaction);
+            message = "Transaction marked as complete.";
+            await LoadTransactions();
+        }
+    }
+}

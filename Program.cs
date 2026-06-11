@@ -6,6 +6,7 @@ using SomaShare.Components;
 using SomaShare.Components.Account;
 using SomaShare.Data;
 using SomaShare.Data.Services;
+using SomaShare.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -47,6 +48,13 @@ builder.Services.AddScoped<IOfferService, OfferService>();
 builder.Services.AddScoped<ITransactionService, TransactionService>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<IWantedAdService, WantedAdService>();
+builder.Services.AddScoped<IFavouriteService, FavouriteService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
+builder.Services.AddScoped<IAdminReportService, AdminReportService>();
+
+// Add SignalR
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
@@ -74,6 +82,9 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+// Map SignalR hub
+app.MapHub<NotificationHub>("/notification-hub");
 
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();

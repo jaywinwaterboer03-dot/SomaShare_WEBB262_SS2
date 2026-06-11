@@ -1,0 +1,203 @@
+@page "/notifications"
+@rendermode InteractiveServer
+
+@using SomaShare.Data
+@using SomaShare.Data.Services
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject INotificationService NotificationService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Notifications - SomaShare</PageTitle>
+
+<div class="notifications-container">
+    <div class="notifications-header">
+        <h2>Notifications</h2>
+        @if (unreadCount > 0)
+        {
+            <button class="btn btn-sm btn-primary" @onclick="MarkAllAsRead">
+                Mark all as read
+            </button>
+        }
+    </div>
+
+    @if (notifications.Count == 0)
+    {
+        <div class="alert alert-info">
+            No notifications yet.
+        </div>
+    }
+    else
+    {
+        <div class="notifications-list">
+            @foreach (var notification in notifications)
+            {
+                <div class="notification-item @(notification.IsRead ? "read" : "unread")">
+                    <div class="notification-content">
+                        <div class="notification-header">
+                            <h5>@notification.Title</h5>
+                            @if (!notification.IsRead)
+                            {
+                                <span class="badge bg-primary">New</span>
+                            }
+                        </div>
+                        <p class="notification-message">@notification.Message</p>
+                        <small class="text-muted">
+                            @if (notification.IsRead && notification.ReadAt.HasValue)
+                            {
+                                <span>Read @FormatTimeAgo(notification.ReadAt.Value)</span>
+                            }
+                            else
+                            {
+                                <span>@FormatTimeAgo(notification.CreatedAt)</span>
+                            }
+                        </small>
+                    </div>
+                    <div class="notification-actions">
+                        @if (!notification.IsRead)
+                        {
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="() => MarkAsRead(notification.Id)">
+                                Mark as read
+                            </button>
+                        }
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteNotification(notification.Id)">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .notifications-container {
+        max-width: 800px;
+        margin: 2rem auto;
+    }
+
+    .notifications-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .notifications-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .notification-item {
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        transition: background-color 0.2s;
+    }
+
+    .notification-item.unread {
+        background-color: #f0f7ff;
+        border-left: 4px solid #0d6efd;
+    }
+
+    .notification-content {
+        flex: 1;
+    }
+
+    .notification-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .notification-header h5 {
+        margin: 0;
+        font-weight: 600;
+    }
+
+    .notification-message {
+        margin: 0.5rem 0;
+        color: #495057;
+    }
+
+    .notification-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-left: 1rem;
+    }
+</style>
+
+@code {
+    private List<Notification> notifications = new();
+    private int unreadCount = 0;
+    private string? currentUserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            currentUserId = user.FindFirst("sub")?.Value ?? user.FindFirst("nameid")?.Value;
+            if (!string.IsNullOrEmpty(currentUserId))
+            {
+                await LoadNotifications();
+            }
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/login");
+        }
+    }
+
+    private async Task LoadNotifications()
+    {
+        if (string.IsNullOrEmpty(currentUserId))
+            return;
+
+        notifications = await NotificationService.GetUserNotificationsAsync(currentUserId);
+        unreadCount = await NotificationService.GetUnreadCountAsync(currentUserId);
+    }
+
+    private async Task MarkAsRead(int notificationId)
+    {
+        await NotificationService.MarkAsReadAsync(notificationId);
+        await LoadNotifications();
+    }
+
+    private async Task MarkAllAsRead()
+    {
+        if (string.IsNullOrEmpty(currentUserId))
+            return;
+
+        await NotificationService.MarkAllAsReadAsync(currentUserId);
+        await LoadNotifications();
+    }
+
+    private async Task DeleteNotification(int notificationId)
+    {
+        await NotificationService.DeleteNotificationAsync(notificationId);
+        await LoadNotifications();
+    }
+
+    private string FormatTimeAgo(DateTime dateTime)
+    {
+        var timeSpan = DateTime.UtcNow - dateTime;
+
+        if (timeSpan.TotalSeconds < 60)
+            return "just now";
+        if (timeSpan.TotalMinutes < 60)
+            return $"{(int)timeSpan.TotalMinutes}m ago";
+        if (timeSpan.TotalHours < 24)
+            return $"{(int)timeSpan.TotalHours}h ago";
+        if (timeSpan.TotalDays < 7)
+            return $"{(int)timeSpan.TotalDays}d ago";
+
+        return dateTime.ToString("MMM dd, yyyy");
+    }
+}

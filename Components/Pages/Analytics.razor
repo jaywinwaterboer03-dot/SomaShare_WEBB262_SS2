@@ -1,0 +1,194 @@
+@page "/analytics"
+@rendermode InteractiveServer
+
+@using SomaShare.Data
+@using SomaShare.Data.Services
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IAnalyticsService AnalyticsService
+@inject NavigationManager NavigationManager
+
+<PageTitle>My Analytics - SomaShare</PageTitle>
+
+<div class="analytics-container">
+    <h2>Your Sales Analytics</h2>
+
+    @if (analytics != null)
+    {
+        <div class="analytics-grid">
+            <div class="stat-card">
+                <h5>Total Listings</h5>
+                <p class="stat-value">@analytics.TotalListingsCreated</p>
+                <small class="text-muted">@analytics.ActiveListings active</small>
+            </div>
+
+            <div class="stat-card">
+                <h5>Completed Sales</h5>
+                <p class="stat-value">@analytics.CompletedSales</p>
+                <small class="text-muted">Revenue: R@analytics.TotalRevenue.ToString("F2")</small>
+            </div>
+
+            <div class="stat-card">
+                <h5>Completed Purchases</h5>
+                <p class="stat-value">@analytics.CompletedPurchases</p>
+            </div>
+
+            <div class="stat-card">
+                <h5>Trust Score</h5>
+                <p class="stat-value">@analytics.AverageTrustScore ★</p>
+                <small class="text-muted">@analytics.ReviewsReceived reviews</small>
+            </div>
+        </div>
+
+        @if (analytics.TopCategories.Count > 0)
+        {
+            <div class="section-card">
+                <h4>Top Selling Categories</h4>
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Listings</th>
+                            <th>Avg Price</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var category in analytics.TopCategories)
+                        {
+                            <tr>
+                                <td>@category.CategoryName</td>
+                                <td>@category.ListingCount</td>
+                                <td>R@category.AveragePrice.ToString("F2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @if (analytics.MonthlySales.Count > 0)
+        {
+            <div class="section-card">
+                <h4>Monthly Sales Trend</h4>
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>Transactions</th>
+                            <th>Revenue</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var month in analytics.MonthlySales)
+                        {
+                            <tr>
+                                <td>@month.Year-@month.Month.ToString("D2")</td>
+                                <td>@month.Count</td>
+                                <td>R@month.Revenue.ToString("F2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="alert alert-info">
+            <p>You don't have any analytics data yet. Start selling textbooks to see your statistics!</p>
+        </div>
+    }
+</div>
+
+<style>
+    .analytics-container {
+        max-width: 1200px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+    }
+
+    .analytics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin: 2rem 0;
+    }
+
+    .stat-card {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        text-align: center;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    .stat-card h5 {
+        margin: 0 0 1rem 0;
+        color: #6c757d;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .stat-value {
+        margin: 0.5rem 0;
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #0d6efd;
+    }
+
+    .section-card {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        margin: 2rem 0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .section-card h4 {
+        margin: 0 0 1.5rem 0;
+        color: #212529;
+    }
+
+    .table {
+        margin-bottom: 0;
+    }
+
+    .table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        color: #495057;
+    }
+</style>
+
+@code {
+    private UserAnalyticsDto? analytics;
+    private string? currentUserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            currentUserId = user.FindFirst("sub")?.Value ?? user.FindFirst("nameid")?.Value;
+            if (!string.IsNullOrEmpty(currentUserId))
+            {
+                analytics = await AnalyticsService.GetUserAnalyticsAsync(currentUserId);
+            }
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/login");
+        }
+    }
+}
