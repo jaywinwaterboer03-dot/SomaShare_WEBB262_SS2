@@ -140,4 +140,11 @@ The application is ready for Azure App Service deployment:
 - Advanced admin filtering
 - QR code verification system
 
+## SS3 Improvements
 
+- Improved user profile handling
+- Added Bio and Preferred Meetup Campus fields
+- Added Afrikaans language option
+- Added Wanted Ad edit functionality
+- Improved validation and user messages
+- Cleaned up navigation and removed duplicate textbook menu item
